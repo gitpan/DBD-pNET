@@ -54,16 +54,17 @@ print OUT <<'!NO!SUBS!';
 #           Phone: +49 7123 14881
 # 
 # 
-#   $Id: pNETagent.PL,v 0.1001 1997/09/14 21:51:09 joe Exp $
+#   $Id: pNETagent.PL,v 1.1.1.1 1997/09/19 20:34:23 joe Exp $
 #
 
 require 5.004;
 use strict;
-use Sys::Syslog;
-use IO::File();
-use IO::Socket();
-use RPC::pServer();
-use DBI;
+require Sys::Syslog;
+require IO::File;
+require IO::Socket;
+require RPC::pServer;
+require DBI;
+require DBD::pNET;
 
 
 ############################################################################
@@ -72,7 +73,8 @@ use DBI;
 #
 ############################################################################
 
-my $VERSION          = '0.01';
+my $VERSION          = $DBD::pNET::VERSION;
+   $VERSION          = $DBD::pNET::VERSION;  # Hate -w ...
 my $DEFAULT_PID_FILE = '/tmp/pNETagent.pid';
 $ENV{'PATH'} = '/bin:/usr/bin:/sbin:/usr/sbin';
 delete $ENV{'ENV'};
@@ -166,6 +168,7 @@ sub ClientConnect ($$$$$) {
     }
 
     if (!defined($dbh = DBI->connect($dsn, $uid, $pwd))) {
+	my $errMsg = $DBI::errstr;
 	$con->{'error'} = "Cannot connect to database: $DBI::errstr";
 	return (0, $con->{'error'});
     }
@@ -470,7 +473,9 @@ sub catchChilds () {
 
 
     #   Initialize debugging and logging
-    Sys::Syslog::setlogsock('unix');
+    if (defined(&Sys::Syslog::setlogsock)) {
+        Sys::Syslog::setlogsock('unix');
+    }
     Sys::Syslog::openlog('pNETagent', 'pid', 'daemon');
     Sys::Syslog::syslog('info', 'agent starting at %s, port %s',
 			defined($ip) ? $ip : 'any ip number', $port);
@@ -479,6 +484,7 @@ sub catchChilds () {
     my $sock = IO::Socket::INET->new('Proto' => 'tcp',
 				     'LocalPort' => $port,
 				     'LocalAddr' => defined($ip) ? $ip : '',
+				     'Reuse' => 1,
 				     'Listen' => 5);
     if (!defined($sock)) {
 	Fatal("Cannot create socket: $!");

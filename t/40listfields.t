@@ -1,23 +1,9 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 40listfields.t,v 0.1001 1997/09/14 21:51:13 joe Exp $
+#   $Id: 40listfields.t,v 1.1.1.1 1997/09/19 20:34:23 joe Exp $
 #
 #   This is a test for statement attributes being present appropriately.
 #
-
-
-#
-#   List of drivers that may execute this test; if this list is
-#   empty, than any driver may execute the test.
-#
-#@DRIVERS_ALLOWED = ();
-
-
-#
-#   List of drivers that may not execute this test; this list is
-#   only used if @DRIVERS_ALLOWED is empty
-#
-#@DRIVERS_DENIED = ();
 
 
 #
@@ -35,12 +21,12 @@ $COL_KEY = '';
 use DBI;
 use vars qw($verbose);
 
-$driver = "";
+$mdriver = "";
 foreach $file ("lib.pl", "t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			   exit 10;
 		      }
-    if ($driver ne '') {
+    if ($mdriver ne '') {
 	last;
     }
 }

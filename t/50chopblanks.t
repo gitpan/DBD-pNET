@@ -1,29 +1,16 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 50chopblanks.t,v 0.1001 1997/09/14 21:51:14 joe Exp $
+#   $Id: 50chopblanks.t,v 1.1.1.1 1997/09/19 20:34:23 joe Exp $
 #
 #   This driver should check whether 'ChopBlanks' works.
 #
 
 
 #
-#   List of drivers that may execute this test; if this list is
-#   empty, than any driver may execute the test.
-#
-#@DRIVERS_ALLOWED = ();
-
-
-#
-#   List of drivers that may not execute this test; this list is
-#   only used if @DRIVERS_ALLOWED is empty
-#
-#@DRIVERS_DENIED = ();
-
-
-#
 #   Make -w happy
 #
-use vars qw($test_dsn $test_user $test_password $driver $verbose $state);
+use vars qw($test_dsn $test_user $test_password $mdriver $verbose $state
+	    $dbdriver);
 use vars qw($COL_NULLABLE $COL_KEY);
 $test_dsn = '';
 $test_user = '';
@@ -35,21 +22,18 @@ $test_password = '';
 #
 use DBI;
 use strict;
-$driver = "";
+$mdriver = "";
 {
     my $file;
     foreach $file ("lib.pl", "t/lib.pl") {
 	do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
 			    exit 10;
 			}
-	if ($driver ne '') {
+	if ($mdriver ne '') {
 	    last;
 	}
     }
 }
-
-sub ErrMsg (@_) { if ($verbose) { print (@_); } }
-sub ErrMsgF (@_) { if ($verbose) { printf (@_); } }
 
 sub ServerError() {
     print STDERR ("Cannot connect: ", $DBI::errstr, "\n",
@@ -124,7 +108,7 @@ while (Testing()) {
 		       $sth->errstr);
 	Test($state or ($$ref[1] eq $name)
 	            or ($name =~ /^$$ref[1]\s+$/  &&
-			($driver eq 'mysql'  ||  $driver eq 'pNET')))
+			$dbdriver eq 'mysql'))
 	    or ErrMsgF("problems with ChopBlanks = 0:"
 		       . " expected '%s', got '%s'.\n",
 		       $name, $$ref[1]);

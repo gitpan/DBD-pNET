@@ -1,3 +1,5 @@
+#   -*- perl -*-
+#
 #
 #   DBD::pNET - DBI network driver
 #
@@ -25,7 +27,7 @@
 #           Phone: +49 7123 14881
 # 
 # 
-#   $Id: pNET.pm,v 0.1001 1997/09/14 21:51:09 joe Exp $
+#   $Id: pNET.pm,v 1.3 1997/09/19 20:35:56 joe Exp $
 #
 
 require 5.002;
@@ -39,7 +41,7 @@ require 5.002;
     use DynaLoader ();
     @ISA = qw(DynaLoader);
 
-    $VERSION = '0.1001';
+    $VERSION = 0.1002;
 
     require_version DBI 0.86;
 
