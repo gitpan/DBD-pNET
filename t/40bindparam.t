@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-#   $Id: 40bindparam.t,v 1.1.1.1 1997/09/19 20:34:23 joe Exp $
+#   $Id: 40bindparam.t 1.1 Tue, 30 Sep 1997 01:28:08 +0200 joe $
 #
 #   This is a skeleton test. For writing new tests, take this file
 #   and modify/extend it.
@@ -19,6 +19,7 @@ $test_password = '';
 #   Include lib.pl
 #
 require DBI;
+use vars qw($COL_NULLABLE);
 $mdriver = "";
 foreach $file ("lib.pl", "t/lib.pl") {
     do $file; if ($@) { print STDERR "Error while executing lib.pl: $@\n";
@@ -27,10 +28,6 @@ foreach $file ("lib.pl", "t/lib.pl") {
     if ($mdriver ne '') {
 	last;
     }
-}
-if ($mdriver eq 'pNET') {
-    print "1..0\n";
-    exit 0;
 }
 
 sub ServerError() {
@@ -42,6 +39,13 @@ sub ServerError() {
 	"\tPlease make sure your server is running and you have\n",
 	"\tpermissions, then retry.\n");
     exit 10;
+}
+
+if (!defined(&SQL_VARCHAR)) {
+    eval "sub SQL_VARCHAR { 12 }";
+}
+if (!defined(&SQL_INTEGER)) {
+    eval "sub SQL_INTEGER { 4 }";
 }
 
 #
@@ -65,7 +69,7 @@ while (Testing()) {
     #
     Test($state or ($def = TableDefinition($table,
 					   ["id",   "INTEGER",  4, 0],
-					   ["name", "CHAR",    64, 0]),
+					   ["name", "CHAR",    64, $COL_NULLABLE]),
 		    $dbh->do($def)))
 	   or DbiError($dbh->err, $dbh->errstr);
 
@@ -75,21 +79,44 @@ while (Testing()) {
 	   or DbiError($dbh->err, $dbh->errstr);
 
     #
-    #   Insert some values using bind_param
+    #   Insert some rows
     #
-    Test($state or $cursor->execute(1, "Alligator Descartes"))
+
+    # Automatic type detection
+    my $numericVal = 1;
+    my $charVal = "Alligator Descartes";
+    Test($state or $cursor->execute($numericVal, $charVal))
 	   or DbiError($dbh->err, $dbh->errstr);
 
-    Test($state or $cursor->execute(2, "Tim Bunce"))
+    # Does the driver remember the automatically detected type?
+    Test($state or $cursor->execute("2", "Tim Bunce"))
+	   or DbiError($dbh->err, $dbh->errstr);
+    $numericVal = 3;
+    $charVal = "Jochen Wiedmann";
+    Test($state or $cursor->execute($numericVal, $charVal))
 	   or DbiError($dbh->err, $dbh->errstr);
 
-    Test($state or $cursor->execute(3, "Jochen Wiedmann"))
+    # Now try the explicit type settings
+    Test($state or $cursor->bind_param(1, " 4", SQL_INTEGER()))
+	or DbiError($dbh->err, $dbh->errstr);
+    Test($state or $cursor->bind_param(2, "Andreas König"))
+	or DbiError($dbh->err, $dbh->errstr);
+    Test($state or $cursor->execute)
 	   or DbiError($dbh->err, $dbh->errstr);
+
+    # Works undef -> NULL?
+    Test($state or $cursor->bind_param(1, 5, SQL_INTEGER()))
+	or DbiError($dbh->err, $dbh->errstr);
+    Test($state or $cursor->bind_param(2, undef))
+	or DbiError($dbh->err, $dbh->errstr);
+    Test($state or $cursor->execute)
+ 	or DbiError($dbh->err, $dbh->errstr);
+  
 
     Test($state or undef $cursor  ||  1);
 
     #
-    #   And now retreive them using bind_columns
+    #   And now retreive the rows using bind_columns
     #
     Test($state or $cursor = $dbh->prepare("SELECT * FROM $table"
 					   . " ORDER BY id"))
@@ -117,6 +144,20 @@ while (Testing()) {
 
     Test($state or (($ref = $cursor->fetch)  &&  $id == 3  &&
 		    $name eq 'Jochen Wiedmann'))
+	or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+ 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
+
+    Test($state or (($ref = $cursor->fetch)  &&  $id == 4  &&
+		    $name eq 'Andreas König'))
+	or DbiError($dbh->err, $dbh->errstr);
+    if (!$state && $verbose) {
+ 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
+    }
+ 
+    Test($state or (($ref = $cursor->fetch)  &&  $id == 5  &&
+ 		    !defined($name)))
 	   or DbiError($dbh->err, $dbh->errstr);
     if (!$state && $verbose) {
 	print "Query returned id = $id, name = $name, ref = $ref, @$ref\n";
@@ -129,5 +170,4 @@ while (Testing()) {
     #
     Test($state or $dbh->do("DROP TABLE $table"))
 	   or DbiError($dbh->err, $dbh->errstr);
-
 }

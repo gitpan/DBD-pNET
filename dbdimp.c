@@ -22,6 +22,8 @@
 #include <netdb.h>
 #include "dbdimp.h"
 
+#include "bindparam.h"
+
 
 /***************************************************************************
  *
@@ -511,6 +513,18 @@ int dbd_st_prepare(SV* sth, imp_sth_t* imp_sth, char* statement, SV* attribs) {
      *  but the DBI specification allows us to relay that until
      *  the first 'execute'.
      */
+
+    /*
+     *  Count the number of parameters
+     */
+    DBIc_NUM_PARAMS(imp_sth) = CountParam(statement);
+
+
+    /*
+     *  Allocate memory for parameters
+     */
+    imp_sth->params = AllocParam(DBIc_NUM_PARAMS(imp_sth));
+
     DBIc_NUM_ROWS(imp_sth) = -1;
     DBIc_IMPSET_on(imp_sth);
     return TRUE;
@@ -558,6 +572,7 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
     int result = -2;
     D_imp_dbh_from_sth;
     SV* statement;
+    int i;
 
     /*  Fetch the 'statement' attribute from the sth attribute hash
      */
@@ -582,6 +597,10 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 	 */
 	METHOD_PREPARE(1, imp_dbh->rdbh, "prepare");
 	PUSHs(statement);
+	for (i = 0;  i < DBIc_NUM_PARAMS(imp_sth);  i++) {
+	    PUSHs(imp_sth->params[i].value);
+	    PUSHs(sv_2mortal(newSViv(imp_sth->params[i].type)));
+	}
 	CALL_DO(sth, FALSE) {
 	    if (count < 4) {
 		pNET_error(sth, DBD_PNET_ERR_NET_ARGS,
@@ -598,6 +617,10 @@ int dbd_st_execute(SV* sth, imp_sth_t* imp_sth) {
 	/* The statement has already been executed; reexecute it.
 	 */
 	METHOD_PREPARE(0, imp_sth->rsth, "execute");
+	for (i = 0;  i < DBIc_NUM_PARAMS(imp_sth);  i++) {
+	    PUSHs(imp_sth->params[i].value);
+	    PUSHs(sv_2mortal(newSViv(imp_sth->params[i].type)));
+	}
 	CALL_DO(sth, -2) {
 	    if (count < 2) {
 		pNET_error(sth, DBD_PNET_ERR_NET_ARGS,
@@ -745,6 +768,13 @@ void dbd_st_destroy(SV* sth, imp_sth_t* imp_sth) {
     D_imp_dbh_from_sth;
 
     DBIc_IMPSET_off(imp_sth);		/* let DBI know we've done it	*/
+
+    /*
+     *  Free values allocated by dbd_bind_ph
+     */
+    FreeParam(imp_sth->params, DBIc_NUM_PARAMS(imp_sth));
+    imp_sth->params = NULL;
+
     if (imp_sth->rsth) {
 	METHOD_PREPARE(0, imp_sth->rsth, "DESTROY");
 	CALL_DO(sth, FALSE); {
@@ -858,10 +888,24 @@ SV* dbd_st_FETCH_attrib(SV* sth, imp_sth_t* imp_sth, SV* keysv) {
  *
  **************************************************************************/
 
+
 int dbd_bind_ph (SV *sth, imp_sth_t *imp_sth, SV *param, SV *value,
 		 IV sql_type, SV *attribs, int is_inout, IV maxlen) {
-    pNET_error(sth, DBD_PNET_ERR_NOT_IMPLEMENTED, "Not implemented");
-    return FALSE;
+    int paramNum = SvIV(param);
+
+    if (paramNum <= 0  ||  paramNum > DBIc_NUM_PARAMS(imp_sth)) {
+        pNET_error(sth, DBD_PNET_ERR_ILLEGAL_PARAM_NUM,
+		       "Illegal parameter number");
+	return FALSE;
+    }
+
+    if (is_inout) {
+        pNET_error(sth, DBD_PNET_ERR_NOT_IMPLEMENTED,
+		       "Output parameters not implemented");
+	return FALSE;
+    }
+
+    return BindParam(&imp_sth->params[paramNum - 1], value, sql_type);
 }
 
 

@@ -111,7 +111,6 @@ sub Msg ($$@) {
     my $level = shift;
     my $msg = shift;
     if ($stderr) {
-	my $level = shift;
 	printf STDERR ($msg, @_);
     } else {
         Sys::Syslog::syslog($level, $msg, @_);
@@ -239,11 +238,38 @@ sub ClientMethod ($$$$) {
 
     if ($method eq 'prepare') {
 	my $statement = shift @margs;
+
+	# Check for restricted access
+	if ($con->{client}->{sqlRestricted}) {
+	    if ($statement =~ /^\s*(\S+)/) {
+		my $st = $1;
+		if (!($statement = $con->{client}->{$st})) {
+		    $con->{'error'} = "Unknown SQL query: $st";
+		    return (0, $con->error);
+		}
+	    } else {
+		$con->{'error'} = "Cannot parse restricted SQL statement";
+		return (0, $con->error);
+	    }
+	}
+
 	# We need to execute 'prepare' and 'execute' at once
 	my $sth;
 	if (!defined($sth = $obj->prepare($statement))) {
 	    $con->{'error'} = "Cannot prepare: " . $obj->errstr;
 	    return (0, $con->error);
+	}
+
+	# Handle binding parameters
+	my $i = 0;
+	while (@margs) {
+	    my ($value) = shift @margs;
+	    my ($type) = shift @margs;
+	    Debug("Binding parameter: Type $type, Value $value");
+	    if (!($sth->bind_param(++$i, $value, $type))) {
+		$con->{'error'} = "Cannot bind param: " . $sth->errstr;
+		return (0, $con->error);
+	    }
 	}
 
 	if (!$sth->execute) {
@@ -261,6 +287,17 @@ sub ClientMethod ($$$$) {
 	return (1, $handle, int($sth->{'NUM_OF_FIELDS'}), int($sth->rows));
     }
     if ($method eq 'execute') {
+	# Handle binding parameters
+	my $i = 0;
+	while (@margs) {
+	    my ($value) = shift @margs;
+	    my ($type) = shift @margs;
+	    if (!$obj->bind_param(++$i, $value, $type)) {
+		$con->{'error'} = "Cannot bind param: " . $obj->errstr;
+		return (0, $con->error);
+	    }
+	}
+
 	if (!$obj->execute) {
 	    $con->{'error'} = "Cannot execute: " . $obj->errstr;
 	    return (0, $con->error);
@@ -594,19 +631,21 @@ pNETagent - a Perl agent for the DBI network driver DBD::pNET
 =head1 DESCRIPTION
 
 pNETagent is an agent for the DBI network driver, DBD::pNET. It allows
-access to databases over the network, even if the DBMS does not
-offer such functionality. But pNETagent might be useful for you,
+access to databases over the network if the DBMS does not offer 
+networked operations. But pNETagent might be useful for you,
 even if you have a DBMS with integrated network functionality: It
 can be used as a DBI proxy in a firewalled environment.
 
-pNETagent runs as a daemon on the machine with the DMBS. The client
-connects to the agent using the DBI driver DBD::pNET, thus in the
-exactly same way than using DBD::mysql, DBD::mSQL or any other DBI
-driver.
+pNETagent runs as a daemon on the machine with the DBMS or on the
+firewall. The client connects to the agent using the DBI driver DBD::pNET,
+thus in the exactly same way than using DBD::mysql, DBD::mSQL or any other
+DBI driver.
 
 The agent is implemented as a RPC::pServer application. Thus you
 have access to all the possibilities of this module, in particular
-encryption and a similar configuration file.
+encryption and a similar configuration file. pNETagent adds the possibility
+of query restrictions: You can define a set of queries that a client may
+execute and restrict access to these. See L</CONFIGURATION FILE>.
 
 =head1 OPTIONS
 
@@ -623,7 +662,7 @@ The following options can be used when starting pNETagent:
 The pNETagent can use a configuration file for authorizing clients.
 The file is almost identical to that of DBD::pNET::Server, with the
 exception of an additional attribute I<users>. See L</CONFIGURATION
-FILE> below.
+FILE>.
 
 =item C<-d>
 
@@ -818,6 +857,34 @@ both host based and user based encryption: The former will be used
 in the authorization phase and the latter once the client has logged
 in. Without user based secrets the host based secret (if any) will
 be used for the complete session.
+
+=head2 Query restrictions
+
+You have the possibility to restrict the queries a client may execute
+to a predefined set.
+
+Suggest the following lines in the configuration file:
+
+    accept alpha
+        sqlRestrict 1
+        insert1 INSERT INTO foo VALUES (?, ?)
+        insert2 INSERT INTO bla VALUES (?, ?, ?)
+
+    accept beta
+        sqlRestrict 0
+
+This allows users connecting from C<beta> to execute any SQL query, but
+users from C<alpha> can only insert values into the tables I<foo> and
+I<bar>. Clients select the query by just passing the query name
+(I<insert1> and I<insert2> in the example above) as an SQL statement
+and binding parameters to the statement. Of course the client side must
+know how much parameters should be passed. Thus you should use the
+following for inserting values into foo from the client:
+
+    my $dbh;
+    my $sth = $dbh->prepare("insert1 (?, ?)");
+    $sth->execute(1, "foo");
+    $sth->execute(2, "bar");
 
 
 =head1 AUTHOR

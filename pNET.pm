@@ -41,7 +41,7 @@ require 5.002;
     use DynaLoader ();
     @ISA = qw(DynaLoader);
 
-    $VERSION = 0.1002;
+    $VERSION = 0.1003;
 
     require_version DBI 0.86;
 
@@ -97,6 +97,7 @@ require 5.002;
 	my($drh, $dbname, $user, $auth)= @_;
 	my($dsnOrig) = $dbname;
 	my($hostname, $port, $key, $cipher, $dsn, $usercipher, $userkey);
+	my($debug) = 0;
 
 	while ($dbname ne '') {
 	    my ($field, $remaining);
@@ -123,6 +124,8 @@ require 5.002;
 	    } elsif ($field =~ /^dsn=/) {
 		$dsn = substr($dbname, 4);
 		last;
+	    } elsif ($field =~ /^debug=/) {
+		$debug = $' ? 1 : 0;
 	    }
 	    $dbname = $remaining;
 	}
@@ -175,7 +178,7 @@ require 5.002;
 				       'password' => $auth,
 				       'version', $DBD::pNET::VERSION,
 				       'cipher' => $cipherRef,
-				       'debug' => 1);
+				       'debug' => $debug);
 	if (!ref($client)) {
 	    $DBD::pNET::errstr = "Cannot log in to DBD::pNET agent: $client";
 	    return undef;
@@ -193,7 +196,8 @@ require 5.002;
 					 'userkey' => $userkey,
 					 'userCipherRef' => $userCipherRef,
 					 'client' => $client,
-					 'key' => $key
+					 'key' => $key,
+					 'debug' => $debug
 				       });
 
 	DBD::pNET::db::_login($this, $dsn, $user, $auth)
@@ -340,6 +344,10 @@ The usercipher/userkey secret is B<your> private secret.
 
 Of course encryption requires an appropriately configured
 server. See <pNETagent(3)/CONFIGURATION FILE>.
+
+=item debug
+
+Turn on debugging mode
 
 =back
 

@@ -4,6 +4,7 @@ Makefile.PL		Makefile generator
 README			General notes on installation and use
 README.tests		Notes on the test suite
 README.ingres		Notes on 'make test' against an Ingres database
+bindparam.h
 dbdimp.c
 dbdimp.h
 pNET.pm			Perl module

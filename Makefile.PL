@@ -38,8 +38,8 @@ print "ok\n";
 $inc = '-I' . $Config{'installsitearch'} . '/auto/DBI';
 
 if ($ENV{HOSTNAME} eq 'laptop.ispsoft.de'  &&  $ENV{'LOGNAME'} eq 'joe') {
-    $def = ' -Wall -pedantic -Wno-comment -Wpointer-arith'
-	. ' -Wcast-align -Wconversion -Wtraditional -Wcast-qual';
+    $def = ' -Wall -Wno-comment -Wpointer-arith'
+	. ' -Wcast-align -Wtraditional -Wcast-qual';
 }
 
 WriteMakefile(

@@ -21,23 +21,23 @@ DESCRIPTION
     than the DBMS. It may run on other machines, if the DBMS itself supports
     access over the network. This can be useful in a firewalled environment.
 
+    pNETagent supports security features like host and user based
+    authorization, encryption and query restrictions: You can create a
+    set of queries that the client may execute and restrict access to
+    these. Again, this is of special importance in a firewalled
+    environment.
+
 REQUIREMENTS
     DBD::pNET is based on the pRPC-modules (Perl RPC) a package for aiding
-    the development of Perl based client/server applications. At the time
-    of this writing this isn't available on the CPAN, but on
+    the development of Perl based client/server applications. You find the
+    this module on any CPAN mirror, for example
 
-	ftp://ftp.neckar-alb.de/pub/users/wiedmann/pRPC-modules-0.1.tar.gz
+	ftp://ftp.funet.fi/pub/languages/perl/CPAN/authors/id/JWIED
 
-    only. Hopefully this will change soon.
+    pRPC is in turn is based on the "Storable" module. This is available
+    from CPAN too, see
 
-    pRPC is in turn is based on version 0.6 of the "Storable" module.
-    This is mainly the latest official distribution with some enhancements
-    I added, in particular encryption and an object oriented API. The
-    author, Raphael Manfredi has agreed that he will distribute a new
-    version with the enhancements included, but currently the only
-    source is
-
-      ftp://ftp.neckar-alb.de/pub/users/wiedmann/Storable-0.6.tar.gz
+	ftp://ftp.funet.fi/pub/languages/perl/CPAN/authors/id/RAP
 
 SEE ALSO
     the DBD::pNET(3) manpage, the pNETagent(1) manpage, the DBI(3) manpage,
