@@ -1,0 +1,5 @@
+Revision history for Perl extension DBD::pNET.
+
+0.01  Thu Aug  7 22:28:41 1997
+	- original version; created by h2xs 1.16
+
